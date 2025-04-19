@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Форма з валідацією</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    form { max-width: 400px; margin: auto; }
+    .error { color: crimson; font-size: 0.9rem; }
+    #result { margin-top: 1rem; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Зв’язок із сервером через ngrok</h1>
+  <form id="contactForm" novalidate>
+    <div>
+      <label for="name">Ім’я:</label><br/>
+      <input type="text" id="name" name="name" required minlength="2" />
+      <div class="error" id="err-name"></div>
+    </div>
+    <div style="margin-top: 1rem;">
+      <label for="email">Email:</label><br/>
+      <input type="email" id="email" name="email" required />
+      <div class="error" id="err-email"></div>
+    </div>
+    <div style="margin-top: 1rem;">
+      <label for="message">Повідомлення:</label><br/>
+      <textarea id="message" name="message" required minlength="10"></textarea>
+      <div class="error" id="err-message"></div>
+    </div>
+    <button type="submit" style="margin-top: 1rem;">Відправити</button>
+  </form>
+
+  <div id="result"></div>
+
+  <script>
+    const form = document.getElementById('contactForm');
+    const resultDiv = document.getElementById('result');
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      resultDiv.textContent = '';
+      // Очистити помилки
+      ['name','email','message'].forEach(f => {
+        document.getElementById('err-'+f).textContent = '';
+      });
+
+      // Перевірка HTML5 Constraint API
+      if (!form.checkValidity()) {
+        for (let el of form.elements) {
+          if (el.willValidate && !el.validity.valid) {
+            document.getElementById('err-'+el.name).textContent =
+              el.validationMessage;
+          }
+        }
+        return;
+      }
+
+      // Зібрати дані
+      const data = {
+        name: form.name.value.trim(),
+        email: form.email.value.trim(),
+        message: form.message.value.trim()
+      };
+
+      try {
+        // Відправити через fetch
+        const resp = await fetch('/api/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const json = await resp.json();
+        if (resp.ok) {
+          resultDiv.style.color = 'green';
+          resultDiv.textContent = json.message;
+          form.reset();
+        } else {
+          // Помилка від сервера
+          resultDiv.style.color = 'crimson';
+          resultDiv.textContent = json.error || 'Сталася помилка';
+        }
+      } catch (err) {
+        resultDiv.style.color = 'crimson';
+        resultDiv.textContent = 'Не вдалося зв’язатися із сервером';
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>
